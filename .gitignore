@@ -1,0 +1,23 @@
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Streamlit Local Cache
+.streamlit/
+
+# Temporary & Log files
+*.log
+scratch/
+test_report.html
+
+# OS generated files
+.DS_Store
+Thumbs.db
