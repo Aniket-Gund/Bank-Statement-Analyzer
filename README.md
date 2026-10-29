@@ -15,7 +15,7 @@ An enterprise-grade, interactive financial analytics dashboard and bank statemen
 
 | Raw Statement Ingestion Format | Financial Analytics & Intelligence Dashboard |
 |:---:|:---:|
-| ![Bank Statement Screenshot](Screenshot%202026-10-27%20103429.png) | ![Executive Dashboard Preview](https://img.shields.io/badge/Interactive_Dashboard-Dark_Theme_UI-00cec9?style=for-the-badge&logo=streamlit&logoColor=white) |
+| ![Bank Statement Screenshot](Screenshot%202026-10-27%20103429.png) | ![Financial Analytics & Intelligence Dashboard](Dashboard_Preview.png) |
 
 ---
 
