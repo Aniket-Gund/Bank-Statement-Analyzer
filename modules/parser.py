@@ -183,7 +183,7 @@ def extract_header_info(df_raw: pd.DataFrame) -> Dict[str, Any]:
         if name_match and not info["account_holder"]:
             info["account_holder"] = name_match.group(1).strip()
         else:
-            # If line is an uppercase name-like string (e.g. "ANIKET BALASAHEB GUND")
+            # If line is an uppercase name-like string (e.g. "RAHUL ARUN SHARMA")
             first_val = row_values[0]
             if re.match(r'^[A-Z\s.]{4,40}$', first_val) and not any(kw in first_val for kw in ['STATEMENT', 'ACCOUNT', 'BANK', 'LIMITED', 'BRANCH', 'PAGE', 'SL.']):
                 potential_names.append(first_val)

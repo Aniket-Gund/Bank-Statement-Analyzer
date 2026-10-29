@@ -297,26 +297,13 @@ with st.sidebar:
     # AI Categorization Settings
     use_ai = st.toggle("Enable Gemini AI Smart Categorization", value=True, help="Uses Gemini 3.5 Flash Lite to categorize ambiguous merchants and transactions.")
 
-    # Check for server or user-provided Gemini API key
-    server_key = os.getenv("GEMINI_API_KEY", "").strip()
+    # Backend Gemini API key resolution (from environment or Streamlit secrets)
+    active_api_key = os.getenv("GEMINI_API_KEY", "").strip()
     try:
-        if not server_key and hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
-            server_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+        if not active_api_key and hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+            active_api_key = str(st.secrets["GEMINI_API_KEY"]).strip()
     except Exception:
         pass
-
-    active_api_key = server_key or st.session_state.get("gemini_api_key", "").strip()
-
-    if use_ai and not active_api_key:
-        input_key = st.text_input(
-            "🔑 Gemini API Key (Optional)",
-            type="password",
-            value=st.session_state.get("gemini_api_key", ""),
-            help="To enable Gemini AI categorization and insights on the live app, enter your free API key from Google AI Studio. Stored in session only."
-        )
-        if input_key and input_key.strip():
-            st.session_state.gemini_api_key = input_key.strip()
-            active_api_key = input_key.strip()
 
     if st.session_state.df_raw is not None and st.session_state.df_processed is None:
         with st.spinner("Classifying and enriching statement transactions..."):
@@ -727,30 +714,7 @@ with tab_txns:
 # ----------------- TAB 3: AI INSIGHTS & REPORT -----------------
 with tab_insights:
     st.subheader("💡 Financial Intelligence & Strategic Recommendations")
-
-    # Engine status caption
-    if active_api_key:
-        st.caption("🤖 Powered by Google Gemini AI (gemini-3.5-flash-lite) • Personalized Financial Analysis")
-    else:
-        st.caption("⚡ Powered by High-Precision Smart Financial Rules • Enter a Gemini API Key to enable AI reasoning")
-
-    # Optional inline API Key input if not provided via environment or sidebar
-    if not active_api_key:
-        with st.expander("🔑 Unlock Gemini Generative AI Reasoning (Free)", expanded=False):
-            st.markdown(
-                "By default, the dashboard generates high-precision deterministic financial insights. "
-                "To unlock deep AI reasoning and personalized recommendations, enter your free Gemini API key from [Google AI Studio](https://aistudio.google.com/):"
-            )
-            col_k1, col_k2 = st.columns([3, 1])
-            with col_k1:
-                tab_key_val = st.text_input("Gemini API Key", type="password", key="tab3_gemini_key_input", label_visibility="collapsed")
-            with col_k2:
-                if st.button("Activate AI", use_container_width=True, key="btn_apply_tab_key"):
-                    if tab_key_val and tab_key_val.strip():
-                        st.session_state.gemini_api_key = tab_key_val.strip()
-                        st.session_state.insights_cache = None
-                        st.session_state.insights_source = None
-                        st.rerun()
+    st.caption("🤖 Powered by Google Gemini AI based on your statement data")
 
     col_act1, col_act2 = st.columns([3, 1])
     with col_act2:
@@ -783,8 +747,6 @@ with tab_insights:
                     st.toast("✨ Successfully regenerated fresh AI insights via Gemini!", icon="🤖")
                 elif source == "rate_limited":
                     st.toast("⏳ Gemini free tier limit reached (15 RPM). Rule-based insights loaded.", icon="⏳")
-                elif source == "no_key":
-                    st.toast("🔄 Insights refreshed using Smart Financial Rules.", icon="💡")
                 else:
                     st.toast("🔄 Insights updated successfully.", icon="💡")
 
@@ -796,7 +758,7 @@ with tab_insights:
     elif current_source == "gemini" and regenerate_btn:
         st.success("🤖 Fresh AI-powered insights generated via Google Gemini AI!")
     elif current_source in ("no_key", "error") and regenerate_btn:
-        st.info("💡 Displaying high-precision rule-based insights. Enter your Gemini API key to enable personalized AI reasoning.")
+        st.info("💡 Displaying high-precision deterministic financial insights.")
 
     # Render insights bullet points with HTML strong tags (eliminating raw asterisks)
     insights_to_show = st.session_state.insights_cache or []
