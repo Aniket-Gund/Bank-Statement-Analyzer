@@ -295,6 +295,20 @@ def rule_based_category(description: str, payee: str, txn_type: str) -> str:
     else:
         return "💸 Personal Transfer" if any(p in description.upper() for p in ["UPI/", "UPI-", "IMPS", "NEFT"]) else "📦 Miscellaneous / Other"
 
+def resolve_api_key(api_key: Optional[str] = None) -> str:
+    """Resolves Gemini API key checking parameter, Streamlit secrets, and environment variable."""
+    if api_key and api_key.strip():
+        return api_key.strip()
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+            k = st.secrets["GEMINI_API_KEY"]
+            if k and str(k).strip():
+                return str(k).strip()
+    except Exception:
+        pass
+    return os.getenv("GEMINI_API_KEY", "").strip()
+
 def classify_with_gemini(descriptions: List[str], api_key: Optional[str] = None) -> List[str]:
     """
     Batch classifies transaction descriptions using Google Gemini API (gemini-3.5-flash-lite).
@@ -302,15 +316,14 @@ def classify_with_gemini(descriptions: List[str], api_key: Optional[str] = None)
     wraps inputs in <untrusted_transaction_data> to neutralize prompt injection,
     and robustly extracts the JSON array.
     """
-    if not api_key:
-        api_key = os.getenv("GEMINI_API_KEY", "")
+    key_to_use = resolve_api_key(api_key)
         
-    if not api_key or not descriptions:
+    if not key_to_use or not descriptions:
         return []
 
     try:
         from google import genai
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=key_to_use)
         
         # De-duplicate descriptions to minimize API payload
         unique_descs = list(dict.fromkeys(descriptions))
@@ -408,7 +421,7 @@ def enrich_and_categorize_dataframe(df: pd.DataFrame, use_ai: bool = True, api_k
     
     # AI-assisted refinement
     if use_ai:
-        api_key_to_use = api_key or os.getenv("GEMINI_API_KEY", "")
+        api_key_to_use = resolve_api_key(api_key)
         if api_key_to_use:
             descriptions = df["description"].tolist()
             ai_results = classify_with_gemini(descriptions, api_key=api_key_to_use)

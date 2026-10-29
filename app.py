@@ -293,9 +293,26 @@ with st.sidebar:
     # AI Categorization Settings
     use_ai = st.toggle("Enable Gemini AI Smart Categorization", value=True, help="Uses Gemini 3.5 Flash Lite to categorize ambiguous merchants and transactions.")
 
+    # Check for server or user-provided Gemini API key
+    active_api_key = os.getenv("GEMINI_API_KEY", "")
+    try:
+        if not active_api_key and hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+            active_api_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+    except Exception:
+        pass
+
+    if use_ai and not active_api_key:
+        input_key = st.text_input(
+            "🔑 Gemini API Key (Optional)",
+            type="password",
+            help="To enable Gemini AI categorization and insights on the live app, enter your free API key from Google AI Studio. Stored in session only."
+        )
+        if input_key and input_key.strip():
+            active_api_key = input_key.strip()
+
     if st.session_state.df_raw is not None and st.session_state.df_processed is None:
         with st.spinner("Classifying and enriching statement transactions..."):
-            df_enr = enrich_and_categorize_dataframe(st.session_state.df_raw, use_ai=use_ai)
+            df_enr = enrich_and_categorize_dataframe(st.session_state.df_raw, use_ai=use_ai, api_key=active_api_key)
             st.session_state.df_processed = df_enr
 
 # Main Content Area
@@ -722,7 +739,8 @@ with tab_insights:
                 payees_df=payees_df,
                 header_info=header_info,
                 anom_df=anom_df,
-                rec_df=rec_df
+                rec_df=rec_df,
+                api_key=active_api_key
             )
 
             # Handle free tier rate limit smoothly without blocking user

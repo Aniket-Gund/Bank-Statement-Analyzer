@@ -1,5 +1,6 @@
 # 🏦 Bank Statement Analyzer & Financial Intelligence Dashboard
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://bank-statement-analyzer-by-aniket-gund.streamlit.app/)
 [![GitHub Stars](https://img.shields.io/github/stars/Aniket-Gund/Bank-Statement-Analyzer?style=for-the-badge&color=blue)](https://github.com/Aniket-Gund/Bank-Statement-Analyzer/stargazers)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
@@ -9,13 +10,15 @@
 
 An enterprise-grade, interactive financial analytics dashboard and bank statement parser built with **Python**, **Streamlit**, **Pandas**, **Plotly**, and **Google Gemini AI**. Ingests raw bank statements (CSV/Excel) across multiple banking formats, isolates counterparties, categorizes transactions via hybrid AI heuristics, computes rigorous financial KPIs, and generates executive-level insights and downloadable reports.
 
+🔗 **Live Web Application:** [https://bank-statement-analyzer-by-aniket-gund.streamlit.app/](https://bank-statement-analyzer-by-aniket-gund.streamlit.app/)
+
 ---
 
 ## 📸 Executive Previews
 
 | Raw Statement Ingestion Format | Financial Analytics & Intelligence Dashboard |
 |:---:|:---:|
-| ![Bank Statement Screenshot](Screenshot%202026-10-27%20103429.png) | ![Financial Analytics & Intelligence Dashboard](Dashboard_Preview.png) |
+| ![Bank Statement Screenshot](Screenshot%202026-10-27%20103429.png) | [![Financial Analytics & Intelligence Dashboard](Dashboard_Preview.png)](https://bank-statement-analyzer-by-aniket-gund.streamlit.app/) |
 
 ---
 

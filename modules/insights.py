@@ -100,6 +100,20 @@ def generate_rule_based_insights(kpis: Dict[str, Any], cat_df: Any, payees_df: A
 
     return bullets
 
+def resolve_api_key(api_key: Optional[str] = None) -> str:
+    """Resolves Gemini API key checking parameter, Streamlit secrets, and environment variable."""
+    if api_key and api_key.strip():
+        return api_key.strip()
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+            k = st.secrets["GEMINI_API_KEY"]
+            if k and str(k).strip():
+                return str(k).strip()
+    except Exception:
+        pass
+    return os.getenv("GEMINI_API_KEY", "").strip()
+
 def generate_gemini_insights(
     kpis: Dict[str, Any],
     cat_df: Any,
@@ -117,17 +131,16 @@ def generate_gemini_insights(
     Returns:
         (insights_list, is_rate_limited, wait_seconds)
     """
-    if not api_key:
-        api_key = os.getenv("GEMINI_API_KEY", "")
+    key_to_use = resolve_api_key(api_key)
         
     rule_insights = generate_rule_based_insights(kpis, cat_df, payees_df, header_info, anom_df, rec_df)
     
-    if not api_key:
+    if not key_to_use:
         return rule_insights, False, 0
 
     try:
         from google import genai
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=key_to_use)
         
         # Prepare context text
         cat_summary = ""
