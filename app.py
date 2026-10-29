@@ -27,7 +27,7 @@ from modules.analyzer import (
     detect_recurring_transactions,
     filter_transactions
 )
-from modules.insights import generate_gemini_insights, generate_rule_based_insights
+from modules.insights import generate_gemini_insights, generate_rule_based_insights, format_insight_to_html
 from modules.report_generator import generate_html_report
 
 load_dotenv()
@@ -184,6 +184,10 @@ if "file_hash" not in st.session_state:
     st.session_state.file_hash = None
 if "active_file_bytes" not in st.session_state:
     st.session_state.active_file_bytes = None
+if "gemini_api_key" not in st.session_state:
+    st.session_state.gemini_api_key = ""
+if "insights_source" not in st.session_state:
+    st.session_state.insights_source = None
 
 # Sidebar
 with st.sidebar:
@@ -294,20 +298,24 @@ with st.sidebar:
     use_ai = st.toggle("Enable Gemini AI Smart Categorization", value=True, help="Uses Gemini 3.5 Flash Lite to categorize ambiguous merchants and transactions.")
 
     # Check for server or user-provided Gemini API key
-    active_api_key = os.getenv("GEMINI_API_KEY", "")
+    server_key = os.getenv("GEMINI_API_KEY", "").strip()
     try:
-        if not active_api_key and hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
-            active_api_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+        if not server_key and hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+            server_key = str(st.secrets["GEMINI_API_KEY"]).strip()
     except Exception:
         pass
+
+    active_api_key = server_key or st.session_state.get("gemini_api_key", "").strip()
 
     if use_ai and not active_api_key:
         input_key = st.text_input(
             "🔑 Gemini API Key (Optional)",
             type="password",
+            value=st.session_state.get("gemini_api_key", ""),
             help="To enable Gemini AI categorization and insights on the live app, enter your free API key from Google AI Studio. Stored in session only."
         )
         if input_key and input_key.strip():
+            st.session_state.gemini_api_key = input_key.strip()
             active_api_key = input_key.strip()
 
     if st.session_state.df_raw is not None and st.session_state.df_processed is None:
@@ -719,7 +727,30 @@ with tab_txns:
 # ----------------- TAB 3: AI INSIGHTS & REPORT -----------------
 with tab_insights:
     st.subheader("💡 Financial Intelligence & Strategic Recommendations")
-    st.caption("Generated with Google Gemini AI based on your statement data")
+
+    # Engine status caption
+    if active_api_key:
+        st.caption("🤖 Powered by Google Gemini AI (gemini-3.5-flash-lite) • Personalized Financial Analysis")
+    else:
+        st.caption("⚡ Powered by High-Precision Smart Financial Rules • Enter a Gemini API Key to enable AI reasoning")
+
+    # Optional inline API Key input if not provided via environment or sidebar
+    if not active_api_key:
+        with st.expander("🔑 Unlock Gemini Generative AI Reasoning (Free)", expanded=False):
+            st.markdown(
+                "By default, the dashboard generates high-precision deterministic financial insights. "
+                "To unlock deep AI reasoning and personalized recommendations, enter your free Gemini API key from [Google AI Studio](https://aistudio.google.com/):"
+            )
+            col_k1, col_k2 = st.columns([3, 1])
+            with col_k1:
+                tab_key_val = st.text_input("Gemini API Key", type="password", key="tab3_gemini_key_input", label_visibility="collapsed")
+            with col_k2:
+                if st.button("Activate AI", use_container_width=True, key="btn_apply_tab_key"):
+                    if tab_key_val and tab_key_val.strip():
+                        st.session_state.gemini_api_key = tab_key_val.strip()
+                        st.session_state.insights_cache = None
+                        st.session_state.insights_source = None
+                        st.rerun()
 
     col_act1, col_act2 = st.columns([3, 1])
     with col_act2:
@@ -727,34 +758,51 @@ with tab_insights:
 
     # Generate or fetch cached insights
     if st.session_state.insights_cache is None or regenerate_btn:
-        with st.spinner("Analyzing spending trends with Gemini AI..."):
+        with st.spinner("Analyzing spending trends and financial health..."):
             cat_df = get_category_spending(df_full)
             payees_df = get_top_payees(df_full)
             anom_df = detect_anomalies(df_full)
             rec_df = detect_recurring_transactions(df_full)
 
-            insights_list, is_rate_limited, wait_seconds = generate_gemini_insights(
+            insights_list, is_rate_limited, wait_seconds, source = generate_gemini_insights(
                 kpis=compute_kpis(df_full),
                 cat_df=cat_df,
                 payees_df=payees_df,
                 header_info=header_info,
                 anom_df=anom_df,
                 rec_df=rec_df,
-                api_key=active_api_key
+                api_key=active_api_key,
+                return_source=True
             )
 
-            # Handle free tier rate limit smoothly without blocking user
-            if is_rate_limited:
-                st.warning("⏳ **Gemini API free tier rate limit (15 requests/min) reached.**")
-                st.info("💡 High-precision deterministic insights have been generated as an instant fallback below. You can click **Regenerate AI Insights** once your quota renews.")
-                st.session_state.insights_cache = insights_list
-            else:
-                st.session_state.insights_cache = insights_list
+            st.session_state.insights_cache = insights_list
+            st.session_state.insights_source = source
 
-    # Render insights bullet points
+            if regenerate_btn:
+                if source == "gemini":
+                    st.toast("✨ Successfully regenerated fresh AI insights via Gemini!", icon="🤖")
+                elif source == "rate_limited":
+                    st.toast("⏳ Gemini free tier limit reached (15 RPM). Rule-based insights loaded.", icon="⏳")
+                elif source == "no_key":
+                    st.toast("🔄 Insights refreshed using Smart Financial Rules.", icon="💡")
+                else:
+                    st.toast("🔄 Insights updated successfully.", icon="💡")
+
+    # Feedback callouts
+    current_source = st.session_state.get("insights_source")
+    if current_source == "rate_limited":
+        st.warning("⏳ **Gemini API free tier rate limit (15 requests/min) reached.**")
+        st.info("💡 High-precision deterministic insights have been generated as an instant fallback below. You can click **Regenerate AI Insights** once your quota renews.")
+    elif current_source == "gemini" and regenerate_btn:
+        st.success("🤖 Fresh AI-powered insights generated via Google Gemini AI!")
+    elif current_source in ("no_key", "error") and regenerate_btn:
+        st.info("💡 Displaying high-precision rule-based insights. Enter your Gemini API key to enable personalized AI reasoning.")
+
+    # Render insights bullet points with HTML strong tags (eliminating raw asterisks)
     insights_to_show = st.session_state.insights_cache or []
     for bullet in insights_to_show:
-        st.markdown(f'<div class="insight-box">{bullet}</div>', unsafe_allow_html=True)
+        formatted_bullet = format_insight_to_html(bullet)
+        st.markdown(f'<div class="insight-box">{formatted_bullet}</div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.divider()

@@ -100,6 +100,21 @@ def generate_rule_based_insights(kpis: Dict[str, Any], cat_df: Any, payees_df: A
 
     return bullets
 
+def format_insight_to_html(text: str) -> str:
+    """
+    Safely escapes raw HTML entities in insight text, converts markdown bold (**text**)
+    to <strong>text</strong> tags, and removes any lingering stray asterisks.
+    """
+    if not text:
+        return ""
+    import html
+    escaped = html.escape(str(text))
+    # Convert **bold** to <strong>bold</strong>
+    clean = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', escaped)
+    # Remove any lingering stray unclosed asterisks
+    clean = clean.replace('**', '')
+    return clean
+
 def resolve_api_key(api_key: Optional[str] = None) -> str:
     """Resolves Gemini API key checking parameter, Streamlit secrets, and environment variable."""
     if api_key and api_key.strip():
@@ -121,21 +136,25 @@ def generate_gemini_insights(
     header_info: Dict[str, Any],
     anom_df: Any,
     rec_df: Any,
-    api_key: Optional[str] = None
-) -> Tuple[List[str], bool, int]:
+    api_key: Optional[str] = None,
+    return_source: bool = False
+) -> Any:
     """
     Calls Google Gemini API (gemini-3.5-flash-lite) to generate rich, personalized,
     actionable financial insights.
     Guards prompt context with <untrusted_statement_data> tags against prompt injection.
     
     Returns:
-        (insights_list, is_rate_limited, wait_seconds)
+        (insights_list, is_rate_limited, wait_seconds) or
+        (insights_list, is_rate_limited, wait_seconds, source) if return_source=True
     """
     key_to_use = resolve_api_key(api_key)
         
     rule_insights = generate_rule_based_insights(kpis, cat_df, payees_df, header_info, anom_df, rec_df)
     
     if not key_to_use:
+        if return_source:
+            return rule_insights, False, 0, "no_key"
         return rule_insights, False, 0
 
     try:
@@ -206,24 +225,36 @@ INSTRUCTIONS:
         )
         
         text = response.text.strip() if hasattr(response, "text") and response.text else ""
-        lines = [line.strip() for line in text.split("\n") if line.strip() and (line.strip().startswith("-") or line.strip().startswith("*") or any(line.strip().startswith(em) for em in ["🟢", "🔴", "💡", "💳", "⚠️", "📊", "🎯", "🔍", "💰", "📱", "🏷️"]))]
+        raw_lines = [l.strip() for l in text.split("\n") if l.strip()]
         
         cleaned_bullets = []
-        for line in lines:
-            cleaned = re.sub(r'^[-*•]\s*', '', line).strip()
-            if cleaned:
+        for line in raw_lines:
+            # Strip numbered markers (e.g., "1. ", "1) ") or bullet markers ("*", "-", "•")
+            cleaned = re.sub(r'^(?:\d+[\.\)]|\-|\*|•)\s*', '', line).strip()
+            # Filter out non-bullet headers
+            if cleaned and len(cleaned) > 15:
+                if cleaned.startswith("#") or cleaned.lower().startswith("here are") or cleaned.lower().startswith("financial insights"):
+                    continue
                 cleaned_bullets.append(cleaned)
                 
         if len(cleaned_bullets) >= 4:
+            if return_source:
+                return cleaned_bullets, False, 0, "gemini"
             return cleaned_bullets, False, 0
         else:
+            if return_source:
+                return rule_insights, False, 0, "gemini_empty"
             return rule_insights, False, 0
 
     except Exception as e:
         err_msg = str(e).lower()
         if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg or "rate limit" in err_msg:
             safe_log(f"[Gemini Rate Limit] Rate limit (15 RPM) reached: {e}")
+            if return_source:
+                return rule_insights, True, 60, "rate_limited"
             return rule_insights, True, 60
         else:
             safe_log(f"[Gemini Insights Error] Fallback to rules: {e}")
+            if return_source:
+                return rule_insights, False, 0, "error"
             return rule_insights, False, 0

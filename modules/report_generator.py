@@ -35,11 +35,16 @@ def safe_chartjs_json(data: Any) -> Markup:
 
 def sanitize_insight_bullet(bullet: str) -> Markup:
     """
-    Escapes HTML entities in insight text, then safely converts **bold** to <strong>bold</strong>.
-    Returns markupsafe.Markup so formatting tags are rendered while raw HTML injections are neutralized.
+    Safely sanitizes and formats insight bullet for HTML report.
+    Converts **bold** to <strong>bold</strong>, removes stray asterisks,
+    and returns Markup.
     """
-    escaped = html.escape(str(bullet))
+    text = str(bullet)
+    if "<strong>" in text and "</strong>" in text:
+        return Markup(text.replace('**', ''))
+    escaped = html.escape(text)
     formatted = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', escaped)
+    formatted = formatted.replace('**', '')
     return Markup(formatted)
 
 def prepare_chart_data(df: pd.DataFrame) -> Dict[str, Any]:
