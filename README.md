@@ -108,6 +108,10 @@ Bank-Statement-Analyzer/
 ├── templates/
 │   └── report.html                  # Responsive dark-theme HTML report template
 │
+├── tests/
+│   ├── test_fuzz_comprehensive.py   # 34-point exhaustive production regression suite
+│   └── test_pipeline.py             # End-to-end multi-bank pipeline test
+│
 ├── app.py                           # Streamlit multi-tab web application
 ├── requirements.txt                 # Project Python dependencies
 ├── .env.example                     # Environment template (NO sensitive keys committed)
@@ -193,7 +197,8 @@ The system includes a 34-point regression suite covering extreme edge cases:
 
 To run the verification test suite:
 ```bash
-python scratch/test_fuzz_comprehensive.py
+python tests/test_fuzz_comprehensive.py
+python tests/test_pipeline.py
 ```
 
 ---
